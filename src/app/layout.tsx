@@ -38,13 +38,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    url: "https://grit-on.com",
+    url: "https://griton-app.vercel.app",
     siteName: "GRIT.ON",
     title: "GRIT.ON - 클래식 연습 코치",
     description: "AI 기반 클래식 음악 연습 지원 앱. 체계적인 연습 계획과 실시간 분석으로 실력을 향상시키세요.",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://griton-app.vercel.app/og-image.png",
         width: 1200,
         height: 630,
         alt: "GRIT.ON - 클래식 연습 코치",
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "GRIT.ON - 클래식 연습 코치",
     description: "AI 기반 클래식 음악 연습 지원 앱. 체계적인 연습 계획과 실시간 분석으로 실력을 향상시키세요.",
-    images: ["/og-image.png"],
+    images: ["https://griton-app.vercel.app/og-image.png"],
   },
   other: {
     "mobile-web-app-capable": "yes",
