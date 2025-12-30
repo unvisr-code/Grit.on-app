@@ -116,8 +116,8 @@ export default function PracticePage() {
     stopRecording,
     reset,
   } = useAudioRecorder({
-    silenceThreshold: -45, // dB threshold
-    minSoundDuration: 150, // ms
+    volumeThreshold: 10, // 0-100, minimum volume to count as sound
+    minSoundDuration: 300, // ms
   });
 
   useEffect(() => {
