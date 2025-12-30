@@ -1,10 +1,26 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Pause, Square, Music, Clock, Sparkles, ChevronRight, Check, Trophy, TrendingUp } from "lucide-react";
+import {
+  Play,
+  Pause,
+  Square,
+  Music,
+  Clock,
+  Sparkles,
+  ChevronRight,
+  Check,
+  Trophy,
+  TrendingUp,
+  Mic,
+  MicOff,
+  Volume2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { useAudioRecorder } from "@/hooks";
+import { savePracticeSession } from "@/lib/db";
 
 // Mock songs library
 const mockSongs = [
@@ -72,77 +88,101 @@ const PRACTICE_TIPS = [
 
 export default function PracticePage() {
   const router = useRouter();
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
   const [tip, setTip] = useState("");
   const [selectedSong, setSelectedSong] = useState(mockSongs[0]);
   const [isSongModalOpen, setIsSongModalOpen] = useState(false);
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
-  const [completedTime, setCompletedTime] = useState(0);
-  const [waveformHeights, setWaveformHeights] = useState<number[]>(Array(24).fill(20));
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const waveformRef = useRef<NodeJS.Timeout | null>(null);
+  const [completedSession, setCompletedSession] = useState<{
+    totalTime: number;
+    practiceTime: number;
+  } | null>(null);
+  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+
+  // Audio recorder hook
+  const {
+    isRecording,
+    isPaused,
+    hasPermission,
+    error,
+    totalTime,
+    practiceTime,
+    currentVolume,
+    isSoundDetected,
+    audioBlob,
+    requestPermission,
+    startRecording,
+    pauseRecording,
+    resumeRecording,
+    stopRecording,
+    reset,
+  } = useAudioRecorder({
+    silenceThreshold: -45, // dB threshold
+    minSoundDuration: 150, // ms
+  });
 
   useEffect(() => {
     setTip(PRACTICE_TIPS[Math.floor(Math.random() * PRACTICE_TIPS.length)]);
   }, []);
 
-  // Timer logic
+  // Request permission on mount
   useEffect(() => {
-    if (isRecording && !isPaused) {
-      timerRef.current = setInterval(() => {
-        setElapsedTime((prev) => prev + 1);
-      }, 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+    if (hasPermission === null) {
+      requestPermission();
     }
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [isRecording, isPaused]);
-
-  // Waveform animation
-  useEffect(() => {
-    if (isRecording && !isPaused) {
-      waveformRef.current = setInterval(() => {
-        setWaveformHeights(Array(24).fill(0).map(() => 20 + Math.random() * 80));
-      }, 150);
-    } else {
-      if (waveformRef.current) {
-        clearInterval(waveformRef.current);
-      }
-      if (isPaused) {
-        setWaveformHeights(Array(24).fill(20));
-      }
-    }
-    return () => {
-      if (waveformRef.current) {
-        clearInterval(waveformRef.current);
-      }
-    };
-  }, [isRecording, isPaused]);
+  }, [hasPermission, requestPermission]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
-  const handleStopRecording = () => {
-    setIsRecording(false);
-    setIsPaused(false);
-    setCompletedTime(elapsedTime);
+  const handleStartRecording = useCallback(async () => {
+    setSessionStartTime(new Date());
+    await startRecording();
+  }, [startRecording]);
+
+  const handleStopRecording = useCallback(async () => {
+    stopRecording();
+
+    // Save session to IndexedDB
+    if (sessionStartTime) {
+      const session = {
+        pieceId: selectedSong.id,
+        pieceName: selectedSong.title,
+        composer: selectedSong.composer,
+        startTime: sessionStartTime,
+        endTime: new Date(),
+        totalTime,
+        practiceTime,
+        audioBlob: audioBlob || undefined,
+        synced: false,
+      };
+
+      try {
+        await savePracticeSession(session);
+      } catch (err) {
+        console.error("Failed to save session:", err);
+      }
+    }
+
+    setCompletedSession({ totalTime, practiceTime });
     setIsCompleteModalOpen(true);
-    setElapsedTime(0);
-  };
+  }, [
+    stopRecording,
+    sessionStartTime,
+    selectedSong,
+    totalTime,
+    practiceTime,
+    audioBlob,
+  ]);
 
   const handleCloseCompleteModal = () => {
     setIsCompleteModalOpen(false);
+    setCompletedSession(null);
+    reset();
   };
 
   const handleViewRecording = () => {
@@ -150,10 +190,32 @@ export default function PracticePage() {
     router.push("/recordings/1");
   };
 
-  const handleSelectSong = (song: typeof mockSongs[0]) => {
+  const handleSelectSong = (song: (typeof mockSongs)[0]) => {
     setSelectedSong(song);
     setIsSongModalOpen(false);
   };
+
+  // Generate waveform bars based on volume
+  const generateWaveformBars = () => {
+    const bars = [];
+    const baseHeight = isSoundDetected ? 30 : 15;
+    const volumeMultiplier = currentVolume / 100;
+
+    for (let i = 0; i < 24; i++) {
+      const randomFactor = 0.5 + Math.random() * 0.5;
+      const height = isPaused
+        ? 15
+        : baseHeight + volumeMultiplier * 60 * randomFactor;
+      bars.push(height);
+    }
+    return bars;
+  };
+
+  const waveformHeights = isRecording ? generateWaveformBars() : [];
+
+  // Calculate practice ratio
+  const practiceRatio =
+    totalTime > 0 ? Math.round((practiceTime / totalTime) * 100) : 0;
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto">
@@ -161,8 +223,11 @@ export default function PracticePage() {
       <div className="mb-8">
         <h1 className="text-xl font-bold text-foreground">연습 세션</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          녹음 버튼을 눌러 연습을 시작하세요
+          {hasPermission === false
+            ? "마이크 권한이 필요합니다"
+            : "녹음 버튼을 눌러 연습을 시작하세요"}
         </p>
+        {error && <p className="text-sm text-destructive mt-1">{error}</p>}
       </div>
 
       {/* Piece Selection */}
@@ -177,28 +242,55 @@ export default function PracticePage() {
             <Music className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-bold text-card-foreground">{selectedSong.title}</p>
-            <p className="text-xs text-muted-foreground">{selectedSong.composer} · {selectedSong.opus}</p>
+            <p className="text-sm font-bold text-card-foreground">
+              {selectedSong.title}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {selectedSong.composer} · {selectedSong.opus}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">
               {selectedSong.difficulty}
             </span>
-            {!isRecording && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            {!isRecording && (
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            )}
           </div>
         </div>
       </div>
 
       {/* Timer Display */}
-      <div className="bg-card rounded-2xl p-8 border border-border shadow-sm mb-12 relative overflow-hidden">
+      <div className="bg-card rounded-2xl p-8 border border-border shadow-sm mb-6 relative overflow-hidden">
         <div className="text-center relative z-10">
-          <div className="text-6xl font-bold text-foreground font-mono mb-2 tracking-tighter">
-            {formatTime(elapsedTime)}
+          {/* Main Timer - Practice Time */}
+          <div className="text-6xl font-bold text-foreground font-mono mb-1 tracking-tighter">
+            {formatTime(practiceTime)}
           </div>
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-8">
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-2">
             <Clock className="w-4 h-4" />
             <span>순연습시간</span>
+            {isRecording && (
+              <span
+                className={`ml-2 flex items-center gap-1 ${
+                  isSoundDetected ? "text-green-500" : "text-muted-foreground"
+                }`}
+              >
+                {isSoundDetected ? (
+                  <Volume2 className="w-3 h-3" />
+                ) : (
+                  <MicOff className="w-3 h-3" />
+                )}
+              </span>
+            )}
           </div>
+
+          {/* Secondary Timer - Total Time */}
+          {isRecording && (
+            <div className="text-sm text-muted-foreground mb-6">
+              총 시간: {formatTime(totalTime)} ({practiceRatio}% 연습)
+            </div>
+          )}
 
           {/* Dynamic Content Area */}
           <div className="h-24 flex items-center justify-center">
@@ -207,7 +299,9 @@ export default function PracticePage() {
                 {waveformHeights.map((height, i) => (
                   <div
                     key={i}
-                    className="w-1.5 bg-primary rounded-full transition-all duration-150"
+                    className={`w-1.5 rounded-full transition-all duration-150 ${
+                      isSoundDetected ? "bg-green-500" : "bg-primary"
+                    }`}
                     style={{
                       height: `${height}%`,
                       opacity: isPaused ? 0.3 : 0.6 + (height / 100) * 0.4,
@@ -233,12 +327,33 @@ export default function PracticePage() {
         <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl" />
       </div>
 
+      {/* Volume Meter */}
+      {isRecording && !isPaused && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-2">
+            <Mic className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">입력 레벨</span>
+          </div>
+          <div className="h-2 bg-secondary rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-100 ${
+                isSoundDetected
+                  ? "bg-gradient-to-r from-green-400 to-green-500"
+                  : "bg-gradient-to-r from-primary/50 to-primary"
+              }`}
+              style={{ width: `${currentVolume}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex items-center justify-center gap-4">
         {!isRecording ? (
           <Button
-            onClick={() => setIsRecording(true)}
-            className="w-20 h-20 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
+            onClick={handleStartRecording}
+            disabled={hasPermission === false}
+            className="w-20 h-20 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30 disabled:opacity-50"
           >
             <Play className="w-8 h-8 text-white" fill="white" />
           </Button>
@@ -246,7 +361,7 @@ export default function PracticePage() {
           <>
             <Button
               variant="outline"
-              onClick={() => setIsPaused(!isPaused)}
+              onClick={() => (isPaused ? resumeRecording() : pauseRecording())}
               className="w-16 h-16 rounded-full"
             >
               {isPaused ? (
@@ -271,6 +386,16 @@ export default function PracticePage() {
         </p>
       )}
 
+      {/* Permission Request Button */}
+      {hasPermission === false && (
+        <div className="mt-6 text-center">
+          <Button variant="outline" onClick={requestPermission}>
+            <Mic className="w-4 h-4 mr-2" />
+            마이크 권한 요청
+          </Button>
+        </div>
+      )}
+
       {/* Song Selection Modal */}
       <Modal
         isOpen={isSongModalOpen}
@@ -289,16 +414,24 @@ export default function PracticePage() {
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  selectedSong.id === song.id ? "bg-primary/10" : "bg-secondary"
-                }`}>
-                  <Music className={`w-5 h-5 ${
-                    selectedSong.id === song.id ? "text-primary" : "text-muted-foreground"
-                  }`} />
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    selectedSong.id === song.id ? "bg-primary/10" : "bg-secondary"
+                  }`}
+                >
+                  <Music
+                    className={`w-5 h-5 ${
+                      selectedSong.id === song.id
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  />
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-foreground">{song.title}</p>
-                  <p className="text-xs text-muted-foreground">{song.composer} · {song.opus}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {song.composer} · {song.opus}
+                  </p>
                 </div>
                 <div className="text-right">
                   {selectedSong.id === song.id ? (
@@ -306,19 +439,25 @@ export default function PracticePage() {
                       <Check className="w-4 h-4 text-white" />
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">{song.lastPracticed}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {song.lastPracticed}
+                    </span>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-2 ml-13">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  song.difficulty === "고급"
-                    ? "bg-orange-100 text-orange-600"
-                    : "bg-blue-100 text-blue-600"
-                }`}>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${
+                    song.difficulty === "고급"
+                      ? "bg-orange-100 text-orange-600"
+                      : "bg-blue-100 text-blue-600"
+                  }`}
+                >
                   {song.difficulty}
                 </span>
-                <span className="text-xs text-muted-foreground">{song.duration}</span>
+                <span className="text-xs text-muted-foreground">
+                  {song.duration}
+                </span>
               </div>
             </button>
           ))}
@@ -339,28 +478,61 @@ export default function PracticePage() {
           </div>
 
           <h3 className="text-xl font-bold text-foreground mb-1">연습 완료!</h3>
-          <p className="text-muted-foreground mb-6">오늘도 훌륭한 연습이었어요</p>
+          <p className="text-muted-foreground mb-6">
+            오늘도 훌륭한 연습이었어요
+          </p>
 
           {/* Stats */}
           <div className="bg-secondary rounded-xl p-4 mb-6">
             <div className="flex items-center justify-center gap-3 mb-3">
               <Music className="w-5 h-5 text-primary" />
-              <span className="font-medium text-foreground">{selectedSong.title}</span>
+              <span className="font-medium text-foreground">
+                {selectedSong.title}
+              </span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
-                <div className="text-2xl font-bold text-foreground">{formatTime(completedTime)}</div>
-                <div className="text-xs text-muted-foreground">연습 시간</div>
+                <div className="text-2xl font-bold text-foreground">
+                  {completedSession ? formatTime(completedSession.totalTime) : "00:00"}
+                </div>
+                <div className="text-xs text-muted-foreground">총 시간</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-primary flex items-center justify-center gap-1">
-                  <TrendingUp className="w-5 h-5" />
-                  +3
+                <div className="text-2xl font-bold text-primary">
+                  {completedSession ? formatTime(completedSession.practiceTime) : "00:00"}
                 </div>
-                <div className="text-xs text-muted-foreground">예상 점수</div>
+                <div className="text-xs text-muted-foreground">순연습</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-green-600 flex items-center justify-center gap-1">
+                  {completedSession && completedSession.totalTime > 0
+                    ? Math.round(
+                        (completedSession.practiceTime /
+                          completedSession.totalTime) *
+                          100
+                      )
+                    : 0}
+                  %
+                </div>
+                <div className="text-xs text-muted-foreground">집중도</div>
               </div>
             </div>
           </div>
+
+          {/* Encouragement based on practice ratio */}
+          {completedSession && (
+            <div className="bg-primary/5 rounded-xl p-3 mb-6">
+              <p className="text-sm text-primary">
+                {completedSession.totalTime > 0 &&
+                completedSession.practiceTime / completedSession.totalTime >= 0.7
+                  ? "🎉 훌륭해요! 집중력이 대단합니다!"
+                  : completedSession.totalTime > 0 &&
+                    completedSession.practiceTime / completedSession.totalTime >= 0.5
+                  ? "👍 좋은 연습이었어요! 조금 더 집중해볼까요?"
+                  : "💪 꾸준히 연습하면 더 좋아질 거예요!"}
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="space-y-2">

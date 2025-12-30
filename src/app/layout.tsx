@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Noto_Serif_KR } from "next/font/google";
+import { Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const notoSansKR = Noto_Sans_KR({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
   display: "swap",
 });
 
@@ -20,7 +21,11 @@ export const metadata: Metadata = {
     default: "GRIT.ON - 클래식 연습 코치",
     template: "%s | GRIT.ON",
   },
-  description: "AI 기반 클래식 음악 연습 지원 앱",
+  description: "AI 기반 클래식 음악 연습 지원 앱. 체계적인 연습 계획과 실시간 분석으로 실력을 향상시키세요.",
+  keywords: ["클래식", "음악", "연습", "코치", "AI", "바이올린", "피아노", "음악교육", "연습실", "음악분석"],
+  authors: [{ name: "GRIT.ON Team" }],
+  creator: "GRIT.ON",
+  publisher: "GRIT.ON",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -29,6 +34,28 @@ export const metadata: Metadata = {
   },
   formatDetection: {
     telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    url: "https://grit-on.com",
+    siteName: "GRIT.ON",
+    title: "GRIT.ON - 클래식 연습 코치",
+    description: "AI 기반 클래식 음악 연습 지원 앱. 체계적인 연습 계획과 실시간 분석으로 실력을 향상시키세요.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "GRIT.ON - 클래식 연습 코치",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GRIT.ON - 클래식 연습 코치",
+    description: "AI 기반 클래식 음악 연습 지원 앱. 체계적인 연습 계획과 실시간 분석으로 실력을 향상시키세요.",
+    images: ["/og-image.png"],
   },
   other: {
     "mobile-web-app-capable": "yes",
@@ -51,12 +78,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-      </head>
-      <body className={`${inter.variable} ${notoserif.variable} antialiased`}>{children}</body>
+      <body className={`${notoSansKR.variable} ${notoserif.variable} antialiased`}>{children}</body>
     </html>
   );
 }

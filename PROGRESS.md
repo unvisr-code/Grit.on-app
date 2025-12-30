@@ -7,7 +7,7 @@
 | **Phase 1** | PWA 기반 + 홈 화면 | ✅ 완료 |
 | **Phase 2** | 나머지 화면 목업 | ✅ 완료 |
 | **Phase 2.5** | 세부 페이지 및 인터랙션 | ✅ 완료 |
-| **Phase 3** | 연습 타이머 핵심 기능 | ⏳ 대기 |
+| **Phase 3** | 연습 타이머 핵심 기능 | ✅ 완료 |
 | **Phase 4** | 데이터 연동 및 분석 | ⏳ 대기 |
 
 ---
@@ -140,29 +140,44 @@
 
 ---
 
-## Phase 3: 연습 타이머 핵심 기능 ⏳
+## Phase 3: 연습 타이머 핵심 기능 ✅
 
-### 예정된 작업
+### 완료된 작업
 
-- [ ] Web Audio API 녹음 구현
-  - [ ] MediaRecorder 설정
-  - [ ] 오디오 스트림 처리
-  - [ ] 파일 저장 (WebM/MP3)
+- [x] Web Audio API 녹음 구현
+  - [x] MediaRecorder 설정 (WebM/MP4 지원)
+  - [x] 오디오 스트림 처리
+  - [x] Blob 파일 저장
 
-- [ ] 소리 감지 알고리즘 (VAD)
-  - [ ] AudioAnalyser 설정
-  - [ ] dB 임계값 설정 (-50dB)
-  - [ ] 연속 소리 감지 로직
+- [x] 소리 감지 알고리즘 (VAD)
+  - [x] AudioAnalyser 설정 (FFT 2048)
+  - [x] dB 임계값 설정 (-45dB 기본값)
+  - [x] 연속 소리 감지 로직 (150ms 최소 지속시간)
+  - [x] 실시간 볼륨 레벨 표시
 
-- [ ] 순연습시간 측정
-  - [ ] 소리 감지 시간 누적
-  - [ ] 무음/대화 구간 제외
-  - [ ] 실시간 타이머 업데이트
+- [x] 순연습시간 측정
+  - [x] 소리 감지 시간 누적
+  - [x] 무음 구간 자동 제외
+  - [x] 실시간 타이머 업데이트
+  - [x] 연습 집중도(%) 계산
 
-- [ ] 세션 저장
-  - [ ] IndexedDB 로컬 저장
-  - [ ] 오프라인 지원
-  - [ ] 동기화 대기열
+- [x] 세션 저장
+  - [x] IndexedDB 로컬 저장 (griton_db)
+  - [x] 오프라인 지원
+  - [x] 동기화 대기열 (synced 플래그)
+
+- [x] UI/UX 개선
+  - [x] 마이크 권한 요청 처리
+  - [x] 실시간 파형 시각화 (볼륨 연동)
+  - [x] 소리 감지 상태 표시 (녹색/보라색)
+  - [x] 입력 레벨 미터
+  - [x] 연습 완료 시 집중도 피드백
+
+### 신규 파일
+
+- `src/hooks/useAudioRecorder.ts` - 오디오 녹음 및 분석 훅
+- `src/hooks/index.ts` - 훅 export
+- `src/lib/db.ts` - IndexedDB 유틸리티
 
 ---
 
@@ -231,8 +246,12 @@ Grit.on-app/
 │   │   └── ui/
 │   │       ├── button.tsx            # 버튼 컴포넌트
 │   │       └── modal.tsx             # 바텀시트 모달
+│   ├── hooks/
+│   │   ├── useAudioRecorder.ts       # 오디오 녹음/분석 훅
+│   │   └── index.ts
 │   ├── lib/
-│   │   └── utils.ts
+│   │   ├── utils.ts
+│   │   └── db.ts                     # IndexedDB 유틸리티
 │   └── sw.ts                         # Service Worker
 ├── package.json
 ├── tsconfig.json

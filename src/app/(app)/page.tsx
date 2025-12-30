@@ -38,7 +38,7 @@ export default function HomePage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8 pt-2">
         <div>
-          <h1 className="text-2xl font-serif font-bold text-foreground leading-tight">
+          <h1 className="text-2xl font-semibold text-foreground leading-tight">
             {greeting},<br />
             <span className="text-primary">{mockUser.name}</span>님
           </h1>
