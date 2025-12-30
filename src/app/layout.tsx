@@ -1,13 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
-
-const notoSerif = Noto_Serif_KR({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-serif",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -71,7 +63,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className={`${notoSerif.variable} antialiased`}>{children}</body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
