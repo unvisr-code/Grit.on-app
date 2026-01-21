@@ -1,34 +1,9 @@
 import Link from "next/link";
-import { Clock, Calendar, TrendingUp, Play } from "lucide-react";
+import { Clock, Calendar, TrendingUp, Play, Zap } from "lucide-react";
 import { StatsCard, QuoteCard, DailyGoal } from "@/components/app";
+import { mockDrillCards, mockUser, mockStats, hasAIAnalysis, getGreeting, getTotalPlanMinutes } from "@/data";
 
-// Mock user data
-const mockUser = {
-  name: "지민",
-  instrument: "피아노",
-  level: "중급",
-  currentPiece: "쇼팽 발라드 1번",
-};
-
-// Mock statistics data
-const mockStats = {
-  totalHours: 127,
-  weekSessions: 12,
-  streakDays: 23,
-  todayMinutes: 45,
-  dailyGoal: 60,
-  weeklyGoal: 420,
-  weeklyProgress: 285,
-  averageScore: 82,
-  totalRecordings: 47,
-};
-
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "좋은 아침이에요";
-  if (hour < 18) return "좋은 오후에요";
-  return "좋은 저녁이에요";
-}
+const totalPlanMinutes = getTotalPlanMinutes(mockDrillCards);
 
 export default function HomePage() {
   const greeting = getGreeting();
@@ -96,61 +71,64 @@ export default function HomePage() {
         <span className="relative">연습 시작하기</span>
       </Link>
 
-      {/* Today's Focus Section - Heatmap Style */}
-      <div className="rounded-2xl overflow-hidden border border-border bg-card shadow-sm mb-24">
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-card-foreground">
-              오늘의 집중 구간
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              AI가 분석한 취약 소절
-            </p>
+      {/* Today's Practice Plan - Drill Cards */}
+      {hasAIAnalysis && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-primary" />
+              <h3 className="text-base font-bold text-foreground">오늘의 연습 플랜</h3>
+              <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                {totalPlanMinutes}분
+              </span>
+            </div>
+            <Link href="/plans" className="text-xs font-medium text-primary hover:text-primary/80">
+              전체 보기 &rarr;
+            </Link>
           </div>
-          <Link href="/analysis" className="text-xs font-medium text-primary hover:text-primary/80">
-            전체 분석 &rarr;
-          </Link>
+          <div className="space-y-2">
+            {mockDrillCards.map((drill, index) => (
+              <Link
+                key={drill.id}
+                href={`/practice?type=partial&measures=${drill.measures}&tempo=${drill.tempo}`}
+                className="block rounded-xl p-4 bg-card border border-border hover:border-primary/30 hover:shadow-md transition-all active:scale-[0.99]"
+              >
+                <div className="flex items-start gap-3">
+                  {/* 아이콘 */}
+                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                    <span className="text-lg">{drill.icon}</span>
+                  </div>
+
+                  {/* 내용 */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground mb-0.5 truncate">{drill.song}</p>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="font-semibold text-foreground text-sm">{drill.title}</p>
+                      <span className="text-[10px] text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded">
+                        {drill.recurrence}회 반복
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">{drill.measures}</p>
+                    <p className="text-xs text-primary font-medium">→ {drill.action}</p>
+                  </div>
+
+                  {/* 템포 & 시간 */}
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-foreground">♩={drill.tempo}</p>
+                    <p className="text-xs text-muted-foreground">{drill.duration}분</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* 시간 캡 안내 */}
+          <p className="text-xs text-muted-foreground text-center mt-3">
+            💡 과부하 방지를 위해 {totalPlanMinutes}분 이내로 구성됨
+          </p>
         </div>
-        
-        <div className="p-5">
-          <div className="grid grid-cols-8 gap-1.5 mb-4">
-            {[...Array(32)].map((_, i) => {
-               // Simulate some data
-               const isHigh = [2, 5, 18, 29].includes(i);
-               const isMid = [6, 11, 15, 22].includes(i);
-               const isLow = [8, 9, 25].includes(i);
-               
-               let bgClass = "bg-muted";
-               if (isHigh) bgClass = "bg-orange-500";
-               else if (isMid) bgClass = "bg-amber-400";
-               else if (isLow) bgClass = "bg-blue-400";
-               
-               return (
-                <div
-                  key={i}
-                  className={`aspect-square rounded-md ${bgClass} transition-all hover:scale-110 hover:shadow-sm`}
-                  title={`소절 ${i + 1}`}
-                />
-               );
-            })}
-          </div>
-          
-          <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-orange-500" />
-              <span>집중 연습</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>리듬 불안</span>
-            </div>
-             <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-blue-400" />
-              <span>템포 흔들림</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
+
     </div>
   );
 }

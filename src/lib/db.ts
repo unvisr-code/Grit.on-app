@@ -4,13 +4,15 @@ export interface PracticeSession {
   id?: number;
   pieceId: string;
   pieceName: string;
-  composer: string;
+  composer?: string;
   startTime: Date;
   endTime: Date;
   totalTime: number; // seconds
   practiceTime: number; // seconds (actual sound detected time)
   audioBlob?: Blob;
   synced: boolean;
+  practiceType?: "partial" | "routine" | "runthrough";
+  label?: string;
 }
 
 const DB_NAME = "griton_db";

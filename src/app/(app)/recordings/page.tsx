@@ -2,107 +2,10 @@
 
 import Link from "next/link";
 import { Music, Clock, TrendingUp, ChevronRight } from "lucide-react";
+import { formatDuration } from "@/lib/format";
+import { mockRecordingsList, getRecordingsStats } from "@/data";
 
-const mockRecordings = [
-  {
-    id: "1",
-    pieceTitle: "발라드 1번 G단조",
-    composer: "F. Chopin",
-    opus: "Op. 23",
-    duration: 1845,
-    score: 84,
-    date: "2024-12-30",
-    focusAreas: 2,
-    improvement: "+3",
-  },
-  {
-    id: "2",
-    pieceTitle: "발라드 1번 G단조",
-    composer: "F. Chopin",
-    opus: "Op. 23",
-    duration: 1520,
-    score: 81,
-    date: "2024-12-29",
-    focusAreas: 3,
-    improvement: "+2",
-  },
-  {
-    id: "3",
-    pieceTitle: "피아노 소나타 8번 '비창'",
-    composer: "L. v. Beethoven",
-    opus: "Op. 13",
-    duration: 2340,
-    score: 86,
-    date: "2024-12-28",
-    focusAreas: 1,
-    improvement: "+5",
-  },
-  {
-    id: "4",
-    pieceTitle: "달빛 (Clair de lune)",
-    composer: "C. Debussy",
-    opus: "Suite bergamasque",
-    duration: 980,
-    score: 91,
-    date: "2024-12-27",
-    focusAreas: 0,
-    improvement: "+4",
-  },
-  {
-    id: "5",
-    pieceTitle: "발라드 1번 G단조",
-    composer: "F. Chopin",
-    opus: "Op. 23",
-    duration: 1680,
-    score: 79,
-    date: "2024-12-26",
-    focusAreas: 4,
-    improvement: "+1",
-  },
-  {
-    id: "6",
-    pieceTitle: "라 캄파넬라",
-    composer: "F. Liszt",
-    opus: "S. 141",
-    duration: 890,
-    score: 72,
-    date: "2024-12-25",
-    focusAreas: 5,
-    improvement: "-2",
-  },
-  {
-    id: "7",
-    pieceTitle: "피아노 소나타 8번 '비창'",
-    composer: "L. v. Beethoven",
-    opus: "Op. 13",
-    duration: 2100,
-    score: 81,
-    date: "2024-12-24",
-    focusAreas: 2,
-    improvement: "+3",
-  },
-  {
-    id: "8",
-    pieceTitle: "환상즉흥곡",
-    composer: "F. Chopin",
-    opus: "Op. 66",
-    duration: 720,
-    score: 88,
-    date: "2024-12-23",
-    focusAreas: 1,
-    improvement: "+6",
-  },
-];
-
-// Calculate stats
-const totalMinutes = Math.floor(mockRecordings.reduce((acc, r) => acc + r.duration, 0) / 60);
-const avgScore = Math.round(mockRecordings.reduce((acc, r) => acc + r.score, 0) / mockRecordings.length);
-
-function formatDuration(seconds: number) {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}분 ${secs}초`;
-}
+const { totalMinutes, avgScore } = getRecordingsStats(mockRecordingsList);
 
 export default function RecordingsPage() {
   return (
@@ -119,7 +22,7 @@ export default function RecordingsPage() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-white rounded-xl p-3 border border-gray-100 text-center">
           <div className="text-2xl font-bold text-gray-900">
-            {mockRecordings.length}
+            {mockRecordingsList.length}
           </div>
           <div className="text-xs text-gray-500">총 녹음</div>
         </div>
@@ -135,7 +38,7 @@ export default function RecordingsPage() {
 
       {/* Recordings List */}
       <div className="space-y-3">
-        {mockRecordings.map((recording) => (
+        {mockRecordingsList.map((recording) => (
           <Link
             key={recording.id}
             href={`/recordings/${recording.id}`}
@@ -149,7 +52,6 @@ export default function RecordingsPage() {
                 <h3 className="text-base font-bold text-gray-900 truncate">
                   {recording.pieceTitle}
                 </h3>
-                <p className="text-sm text-slate-400">{recording.composer}</p>
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
                     <Clock className="w-3 h-3" />
