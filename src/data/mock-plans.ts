@@ -84,7 +84,7 @@ export const mockDrillCards: DrillCard[] = [
   {
     id: "1",
     type: "rhythm",
-    icon: "⏱️",
+    icon: "",
     song: "F. Chopin Ballade Op.23 No.1",
     title: "리듬 흔들림",
     measures: "57-60마디",
@@ -97,7 +97,7 @@ export const mockDrillCards: DrillCard[] = [
   {
     id: "2",
     type: "sync",
-    icon: "〰️",
+    icon: "",
     song: "F. Chopin Ballade Op.23 No.1",
     title: "양손 어긋남",
     measures: "23-26마디",
@@ -110,7 +110,7 @@ export const mockDrillCards: DrillCard[] = [
   {
     id: "3",
     type: "pedal",
-    icon: "🌊",
+    icon: "",
     song: "F. Chopin Ballade Op.23 No.1",
     title: "페달 잔향 겹침",
     measures: "81-84마디",
@@ -123,7 +123,7 @@ export const mockDrillCards: DrillCard[] = [
   {
     id: "4",
     type: "dynamics",
-    icon: "🎵",
+    icon: "",
     song: "L. v. Beethoven Sonata Op.13 No.8",
     title: "다이나믹 부족",
     measures: "33-38마디",
@@ -138,4 +138,27 @@ export const mockDrillCards: DrillCard[] = [
 /** 드릴 카드 총 연습 시간 계산 */
 export function getTotalPlanMinutes(drillCards: DrillCard[]): number {
   return drillCards.reduce((sum, card) => sum + card.duration, 0);
+}
+
+/** 곡별로 드릴 카드 그룹화 */
+export interface GroupedDrills {
+  song: string;
+  drills: DrillCard[];
+  totalDuration: number;
+}
+
+export function groupDrillsBySong(drillCards: DrillCard[]): GroupedDrills[] {
+  const grouped = drillCards.reduce((acc, drill) => {
+    if (!acc[drill.song]) {
+      acc[drill.song] = [];
+    }
+    acc[drill.song].push(drill);
+    return acc;
+  }, {} as Record<string, DrillCard[]>);
+
+  return Object.entries(grouped).map(([song, drills]) => ({
+    song,
+    drills,
+    totalDuration: drills.reduce((sum, d) => sum + d.duration, 0),
+  }));
 }

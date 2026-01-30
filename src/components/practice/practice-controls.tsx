@@ -7,9 +7,6 @@ interface PracticeControlsProps {
   isRecording: boolean;
   isPaused: boolean;
   hasPermission: boolean | null;
-  isCalibrating: boolean;
-  isSoundDetected: boolean;
-  isPianoDetected: boolean;
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
@@ -21,9 +18,6 @@ export function PracticeControls({
   isRecording,
   isPaused,
   hasPermission,
-  isCalibrating,
-  isSoundDetected,
-  isPianoDetected,
   onStart,
   onPause,
   onResume,
@@ -64,24 +58,6 @@ export function PracticeControls({
           </>
         )}
       </div>
-
-      {isRecording && (
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          {isPaused ? (
-            "일시정지됨"
-          ) : isCalibrating ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-              환경 소음 측정 중... 잠시만 기다려주세요
-            </span>
-          ) : (
-            <span className="flex items-center justify-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${isPianoDetected ? "bg-green-500" : isSoundDetected ? "bg-yellow-500" : "bg-gray-400"}`} />
-              {isPianoDetected ? "🎹 피아노 연주 감지" : isSoundDetected ? "소리 감지 (피아노 아님)" : "대기 중"}
-            </span>
-          )}
-        </p>
-      )}
 
       {/* Permission Request Button */}
       {hasPermission === false && (

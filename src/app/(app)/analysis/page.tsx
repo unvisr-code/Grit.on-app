@@ -1,11 +1,29 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, Search, Sparkles, Clock, Music, ChevronRight, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Music, TrendingUp, AlertCircle, CheckCircle, BarChart2 } from "lucide-react";
-import { mockFocusAreas, mockOverallAnalysis } from "@/data";
+import { mockSongs, mockSongAIInfo } from "@/data";
+
+// 최근 분석 히스토리 (mock)
+const recentAnalysis = [
+  { id: "1", title: "F. Chopin Ballade Op.23 No.1", date: "오늘" },
+  { id: "2", title: "L. v. Beethoven Sonata Op.13 No.8", date: "어제" },
+];
 
 export default function AnalysisPage() {
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newSong, setNewSong] = useState({ composer: "", title: "" });
+
+  // 검색 필터링
+  const filteredSongs = searchQuery.length >= 2
+    ? mockSongs.filter((song) =>
+        song.title.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto pb-24">
@@ -17,170 +35,214 @@ export default function AnalysisPage() {
         >
           <ArrowLeft className="w-5 h-5 text-muted-foreground" />
         </button>
-        <div>
-          <h1 className="text-lg font-bold text-foreground">AI 분석 리포트</h1>
-          <p className="text-xs text-muted-foreground">연습 패턴과 개선점을 확인하세요</p>
+        <div className="flex-1">
+          <h1 className="text-lg font-bold text-foreground">AI 곡 분석하기</h1>
+          <p className="text-xs text-muted-foreground">작품 정보와 연주 가이드</p>
+        </div>
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+          <Sparkles className="w-5 h-5 text-white" />
         </div>
       </div>
 
-      {/* Current Piece */}
-      <div className="bg-card rounded-xl p-4 border border-border shadow-sm mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-            <Music className="w-6 h-6 text-primary" />
-          </div>
-          <div className="flex-1">
-            <h2 className="font-bold text-card-foreground">{mockOverallAnalysis.currentPiece}</h2>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">{mockOverallAnalysis.totalSessions}회 연습</div>
-          </div>
-        </div>
+      {/* Search Bar */}
+      <div className="relative mb-4">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="곡 이름으로 검색 (2글자 이상)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+        />
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
-        <div className="bg-card rounded-xl p-3 border border-border text-center">
-          <div className="text-xl font-bold text-primary">{mockOverallAnalysis.averageScore}</div>
-          <div className="text-xs text-muted-foreground">평균 점수</div>
-        </div>
-        <div className="bg-card rounded-xl p-3 border border-border text-center">
-          <div className="text-xl font-bold text-green-600">{mockOverallAnalysis.improvement}</div>
-          <div className="text-xs text-muted-foreground">성장</div>
-        </div>
-        <div className="bg-card rounded-xl p-3 border border-border text-center">
-          <div className="text-xl font-bold text-orange-500">{mockOverallAnalysis.weakAreas}</div>
-          <div className="text-xs text-muted-foreground">취약 구간</div>
-        </div>
-        <div className="bg-card rounded-xl p-3 border border-border text-center">
-          <div className="text-xl font-bold text-blue-500">{mockOverallAnalysis.strongAreas}</div>
-          <div className="text-xs text-muted-foreground">강점 구간</div>
-        </div>
-      </div>
+      {/* Add Song Button */}
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="w-full flex items-center justify-center gap-2 py-3 mb-6 rounded-xl border-2 border-dashed border-primary/30 text-primary hover:bg-primary/5 transition-colors"
+      >
+        <Plus className="w-5 h-5" />
+        <span className="font-medium">새로운 곡 분석하기</span>
+      </button>
 
-      {/* Focus Areas Grid */}
-      <div className="bg-card rounded-xl border border-border shadow-sm mb-4 overflow-hidden">
-        <div className="px-4 py-3 bg-muted/50 border-b border-border">
-          <h3 className="font-semibold text-card-foreground flex items-center gap-2">
-            <BarChart2 className="w-4 h-4 text-primary" />
-            마디별 분석
+      {/* Search Results */}
+      {searchQuery.length >= 2 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Search className="w-4 h-4 text-muted-foreground" />
+            검색 결과
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">총 32마디 중 집중 필요 구간</p>
+          {filteredSongs.length > 0 ? (
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              {filteredSongs.map((song, index) => {
+                const hasAIInfo = !!mockSongAIInfo[song.id];
+                return (
+                  <Link
+                    key={song.id}
+                    href={`/songs/${song.id}`}
+                    className={`flex items-center gap-3 p-4 hover:bg-secondary/30 transition-colors ${
+                      index !== filteredSongs.length - 1 ? "border-b border-border" : ""
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Music className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{song.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {hasAIInfo ? "AI 분석 정보 있음" : "기본 정보"}
+                      </p>
+                    </div>
+                    {hasAIInfo && (
+                      <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                    )}
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-secondary/50 rounded-xl p-6 text-center">
+              <p className="text-muted-foreground text-sm">검색 결과가 없습니다</p>
+            </div>
+          )}
         </div>
+      )}
 
-        <div className="p-4">
-          <div className="grid grid-cols-8 gap-1.5 mb-4">
-            {[...Array(32)].map((_, i) => {
-              const focusArea = mockFocusAreas.find((f) => f.measure === i + 1);
-              let bgClass = "bg-muted";
-              if (focusArea?.type === "high") bgClass = "bg-orange-500";
-              else if (focusArea?.type === "mid") bgClass = "bg-amber-400";
-              else if (focusArea?.type === "low") bgClass = "bg-blue-400";
-
-              return (
-                <div
-                  key={i}
-                  className={`aspect-square rounded-md ${bgClass} transition-all hover:scale-110 hover:shadow-sm cursor-pointer relative group`}
-                  title={focusArea?.issue || `소절 ${i + 1}`}
+      {/* Recent Analysis History */}
+      {searchQuery.length < 2 && (
+        <>
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              최근 분석한 곡
+            </h3>
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              {recentAnalysis.map((item, index) => (
+                <Link
+                  key={item.id}
+                  href={`/songs/${item.id}`}
+                  className={`flex items-center gap-3 p-4 hover:bg-secondary/30 transition-colors ${
+                    index !== recentAnalysis.length - 1 ? "border-b border-border" : ""
+                  }`}
                 >
-                  <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white font-medium opacity-0 group-hover:opacity-100">
-                    {i + 1}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-orange-500" />
-              <span>집중 연습</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-amber-400" />
-              <span>리듬 불안</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-blue-400" />
-              <span>템포 흔들림</span>
+                  <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground text-sm truncate">{item.title}</p>
+                    <p className="text-xs text-muted-foreground">{item.date}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </Link>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Focus Areas List */}
-      <div className="bg-card rounded-xl border border-border shadow-sm mb-4 overflow-hidden">
-        <div className="px-4 py-3 bg-orange-50 border-b border-orange-100">
-          <h3 className="font-semibold text-orange-800 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            집중 연습 구간 상세
-          </h3>
-        </div>
-
-        <div className="divide-y divide-border">
-          {mockFocusAreas
-            .filter((f) => f.type === "high")
-            .map((area, index) => (
-              <div key={index} className="p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-bold text-orange-700">{area.measure}</span>
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-card-foreground">{area.measure}번 마디</p>
-                  <p className="text-sm text-muted-foreground">{area.issue}</p>
-                </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600">
-                  집중
-                </span>
-              </div>
-            ))}
-        </div>
-      </div>
-
-      {/* AI Recommendations */}
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-        <div className="px-4 py-3 bg-primary/5 border-b border-primary/10">
-          <h3 className="font-semibold text-card-foreground flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-primary" />
-            AI 추천 연습 방법
-          </h3>
-        </div>
-
-        <div className="p-4 space-y-3">
-          {mockOverallAnalysis.recommendations.map((rec, index) => (
-            <div key={index} className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="text-xs font-bold text-primary">{index + 1}</span>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed text-pretty">{rec}</p>
+          {/* All Songs with AI Info */}
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <Music className="w-4 h-4 text-muted-foreground" />
+              분석 가능한 곡
+            </h3>
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              {mockSongs.map((song, index) => {
+                const hasAIInfo = !!mockSongAIInfo[song.id];
+                return (
+                  <Link
+                    key={song.id}
+                    href={`/songs/${song.id}`}
+                    className={`flex items-center gap-3 p-4 hover:bg-secondary/30 transition-colors ${
+                      index !== mockSongs.length - 1 ? "border-b border-border" : ""
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      hasAIInfo ? "bg-primary/10" : "bg-secondary"
+                    }`}>
+                      <Music className={`w-5 h-5 ${hasAIInfo ? "text-primary" : "text-muted-foreground"}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{song.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {hasAIInfo ? "AI 분석 정보 있음" : "기본 정보"}
+                      </p>
+                    </div>
+                    {hasAIInfo && (
+                      <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                    )}
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </Link>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
 
-      {/* Trend Chart Placeholder */}
-      <div className="mt-4 bg-card rounded-xl border border-border shadow-sm p-4">
-        <h3 className="font-semibold text-card-foreground mb-3 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-green-500" />
-          최근 점수 추이
-        </h3>
-        <div className="h-32 flex items-end justify-between gap-2">
-          {[72, 75, 78, 76, 80, 82, 84].map((score, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className="w-full bg-primary/20 rounded-t-md relative"
-                style={{ height: `${(score / 100) * 100}%` }}
+      {/* Add Song Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-foreground">새로운 곡 분석</h3>
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setNewSong({ composer: "", title: "" });
+                }}
+                className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80"
               >
-                <div
-                  className="absolute bottom-0 left-0 right-0 bg-primary rounded-t-md"
-                  style={{ height: `${(score - 70) * 3.33}%` }}
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  작곡가
+                </label>
+                <input
+                  type="text"
+                  placeholder="예: F. Chopin"
+                  value={newSong.composer}
+                  onChange={(e) => setNewSong({ ...newSong, composer: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
-              <span className="text-[10px] text-muted-foreground">{i + 1}일</span>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">
+                  곡 이름
+                </label>
+                <input
+                  type="text"
+                  placeholder="예: Ballade Op.23 No.1"
+                  value={newSong.title}
+                  onChange={(e) => setNewSong({ ...newSong, title: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
             </div>
-          ))}
+
+            <button
+              onClick={() => {
+                if (newSong.composer.length >= 2 && newSong.title.length >= 2) {
+                  const newId = `new-${Date.now()}`;
+                  const fullTitle = `${newSong.composer} ${newSong.title}`;
+                  // Navigate to the song detail page with the new song
+                  router.push(`/songs/${newId}?title=${encodeURIComponent(fullTitle)}`);
+                  setIsModalOpen(false);
+                  setNewSong({ composer: "", title: "" });
+                }
+              }}
+              disabled={newSong.composer.length < 2 || newSong.title.length < 2}
+              className="w-full mt-5 py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+            >
+              분석하기
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

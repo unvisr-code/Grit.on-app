@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Target, CheckCircle, Circle, Sparkles } from "lucide-react";
-import { weekDays, mockWeeklyData, initialTodayPlan, mockAISuggestions } from "@/data";
+import { Calendar, Target, CheckCircle, Circle, Sparkles, Plus, X, Check } from "lucide-react";
+import { weekDays, mockWeeklyData, initialTodayPlan, mockAISuggestions, mockSongs } from "@/data";
 import type { TodayPlanItem } from "@/types";
 
 const today = new Date().getDay();
 
 export default function PlansPage() {
   const [todayPlan, setTodayPlan] = useState<TodayPlanItem[]>(initialTodayPlan);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSongId, setSelectedSongId] = useState<string | null>(null);
+  const [practiceContent, setPracticeContent] = useState("");
 
   const togglePlanComplete = (id: string) => {
     setTodayPlan((prev) =>
@@ -16,6 +19,26 @@ export default function PlansPage() {
         plan.id === id ? { ...plan, completed: !plan.completed } : plan
       )
     );
+  };
+
+  const handleAddPlan = () => {
+    const selectedSong = mockSongs.find((s) => s.id === selectedSongId);
+    if (!selectedSong || !practiceContent) return;
+
+    const plan: TodayPlanItem = {
+      id: Date.now().toString(),
+      piece: selectedSong.title,
+      measures: practiceContent,
+      duration: 15,
+      priority: "medium",
+      note: "",
+      completed: false,
+    };
+
+    setTodayPlan((prev) => [...prev, plan]);
+    setSelectedSongId(null);
+    setPracticeContent("");
+    setIsModalOpen(false);
   };
 
   const completedCount = todayPlan.filter((p) => p.completed).length;
@@ -80,6 +103,12 @@ export default function PlansPage() {
             <span className="text-xs font-medium text-primary bg-primary/5 px-2 py-1 rounded-full">
               {completedDuration}/{totalDuration}분
             </span>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="w-7 h-7 flex items-center justify-center bg-primary text-white rounded-full hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -191,6 +220,82 @@ export default function PlansPage() {
           </div>
         ))}
       </div>
+
+      {/* Add Plan Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setIsModalOpen(false)}
+          />
+
+          {/* Modal */}
+          <div className="relative w-full max-w-lg bg-white rounded-t-2xl p-5 pb-8 animate-in slide-in-from-bottom duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-gray-900">새 계획 추가</h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="space-y-4">
+              {/* 곡 선택 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  곡 선택
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {mockSongs.map((song) => (
+                    <button
+                      key={song.id}
+                      onClick={() => setSelectedSongId(song.id)}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                        selectedSongId === song.id
+                          ? "bg-primary text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {selectedSongId === song.id && (
+                        <Check className="w-3 h-3 inline mr-1" />
+                      )}
+                      {song.title.length > 25 ? song.title.slice(0, 25) + "..." : song.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 연습 내용 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  연습 내용
+                </label>
+                <input
+                  type="text"
+                  value={practiceContent}
+                  onChange={(e) => setPracticeContent(e.target.value)}
+                  placeholder="예: mm. 23-28 코다 진입부 연습"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                onClick={handleAddPlan}
+                disabled={!selectedSongId || !practiceContent}
+                className="w-full py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed mt-2"
+              >
+                추가하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

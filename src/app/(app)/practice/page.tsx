@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAudioRecorder } from "@/hooks";
 import { savePracticeSession } from "@/lib/db";
 import { mockSongs as initialSongs, getRandomTip, recentRecordings } from "@/data";
-import type { PracticeType, Song, NewSongForm } from "@/types";
+import type { PracticeType, Song } from "@/types";
 import {
-  PracticeTypeSelector,
   PieceSelector,
   PracticeTimer,
-  VolumeMeter,
   PracticeControls,
   RecentRecordingsList,
   SongSelectionModal,
@@ -25,6 +23,11 @@ interface CompletedSession {
   practiceType: PracticeType;
 }
 
+interface RecordedAudio {
+  url: string;
+  duration: number;
+}
+
 export default function PracticePage() {
   const router = useRouter();
   const [tip, setTip] = useState("");
@@ -36,15 +39,12 @@ export default function PracticePage() {
   const [practiceType, setPracticeType] = useState<PracticeType>("runthrough");
   const [songs, setSongs] = useState<Song[]>(initialSongs);
   const [searchQuery, setSearchQuery] = useState("");
-  const [newSong, setNewSong] = useState<NewSongForm>({
-    composer: "",
-    songType: "",
-    opus: "",
-    number: "",
-    duration: "",
-  });
+  const [newSong, setNewSong] = useState({ composer: "", title: "" });
   const [completedSession, setCompletedSession] = useState<CompletedSession | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+  const [recordedAudio, setRecordedAudio] = useState<RecordedAudio | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Audio recorder hook
   const {
@@ -102,7 +102,7 @@ export default function PracticePage() {
         audioBlob: audioBlob || undefined,
         synced: false,
         practiceType,
-        label: practiceType === "partial" || practiceType === "routine" ? "부분 연습" : "런스루",
+        label: "연습",
       };
 
       try {
@@ -110,15 +110,16 @@ export default function PracticePage() {
       } catch (err) {
         console.error("Failed to save session:", err);
       }
+
+      // 녹음된 오디오 URL 생성
+      if (audioBlob) {
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setRecordedAudio({ url: audioUrl, duration: practiceTime });
+      }
     }
 
     setCompletedSession({ totalTime, practiceTime, practiceType });
-
-    if (practiceType === "runthrough") {
-      setIsAIAnalysisModalOpen(true);
-    } else {
-      setIsCompleteModalOpen(true);
-    }
+    setIsCompleteModalOpen(true);
   }, [
     stopRecording,
     sessionStartTime,
@@ -129,9 +130,32 @@ export default function PracticePage() {
     practiceType,
   ]);
 
+  const handlePlayRecording = () => {
+    if (!recordedAudio) return;
+
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+  };
+
   const handleCloseCompleteModal = () => {
     setIsCompleteModalOpen(false);
     setCompletedSession(null);
+    if (recordedAudio) {
+      URL.revokeObjectURL(recordedAudio.url);
+      setRecordedAudio(null);
+    }
+    setIsPlaying(false);
     reset();
   };
 
@@ -146,26 +170,18 @@ export default function PracticePage() {
   };
 
   const handleAddSong = () => {
-    if (!newSong.composer || !newSong.songType) return;
-
-    const title = `${newSong.composer} ${newSong.songType}${newSong.opus ? ` ${newSong.opus}` : ""}${newSong.number ? ` No.${newSong.number}` : ""}`;
+    if (newSong.composer.trim().length < 2 || newSong.title.trim().length < 2) return;
 
     const newSongData: Song = {
       id: String(songs.length + 1),
-      title,
-      duration: newSong.duration || "5 min",
+      title: `${newSong.composer.trim()} ${newSong.title.trim()}`,
+      duration: "5 min",
       lastPracticed: "New",
     };
 
     setSongs([newSongData, ...songs]);
     setSelectedSong(newSongData);
-    setNewSong({
-      composer: "",
-      songType: "",
-      opus: "",
-      number: "",
-      duration: "",
-    });
+    setNewSong({ composer: "", title: "" });
     setIsAddSongModalOpen(false);
     setIsSongModalOpen(false);
   };
@@ -183,14 +199,6 @@ export default function PracticePage() {
         {error && <p className="text-sm text-destructive mt-1">{error}</p>}
       </div>
 
-      {/* Practice Type Selection */}
-      {!isRecording && (
-        <PracticeTypeSelector
-          selectedType={practiceType}
-          onSelectType={setPracticeType}
-        />
-      )}
-
       {/* Piece Selection */}
       <PieceSelector
         selectedSong={selectedSong}
@@ -201,23 +209,20 @@ export default function PracticePage() {
       {/* Timer Display */}
       <PracticeTimer
         practiceTime={practiceTime}
-        totalTime={totalTime}
         isRecording={isRecording}
         isPaused={isPaused}
-        isSoundDetected={isSoundDetected}
-        isPianoDetected={isPianoDetected}
-        currentVolume={currentVolume}
         tip={tip}
+        recordedAudio={recordedAudio}
+        isPlaying={isPlaying}
+        onPlayRecording={handlePlayRecording}
       />
 
-      {/* Volume Meter */}
-      {isRecording && !isPaused && (
-        <VolumeMeter
-          currentDecibel={currentDecibel}
-          noiseFloor={noiseFloor}
-          isCalibrating={isCalibrating}
-          isSoundDetected={isSoundDetected}
-          isPianoDetected={isPianoDetected}
+      {/* Hidden Audio Element */}
+      {recordedAudio && (
+        <audio
+          ref={audioRef}
+          src={recordedAudio.url}
+          onEnded={handleAudioEnded}
         />
       )}
 
@@ -226,9 +231,6 @@ export default function PracticePage() {
         isRecording={isRecording}
         isPaused={isPaused}
         hasPermission={hasPermission}
-        isCalibrating={isCalibrating}
-        isSoundDetected={isSoundDetected}
-        isPianoDetected={isPianoDetected}
         onStart={handleStartRecording}
         onPause={pauseRecording}
         onResume={resumeRecording}

@@ -1,13 +1,17 @@
 "use client";
 
 import { Modal } from "@/components/ui/modal";
-import type { NewSongForm } from "@/types";
+
+interface NewSongData {
+  composer: string;
+  title: string;
+}
 
 interface AddSongModalProps {
   isOpen: boolean;
   onClose: () => void;
-  newSong: NewSongForm;
-  onNewSongChange: (song: NewSongForm) => void;
+  newSong: NewSongData;
+  onNewSongChange: (song: NewSongData) => void;
   onAddSong: () => void;
 }
 
@@ -18,6 +22,8 @@ export function AddSongModal({
   onNewSongChange,
   onAddSong,
 }: AddSongModalProps) {
+  const isValid = newSong.composer.trim().length >= 2 && newSong.title.trim().length >= 2;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -28,81 +34,38 @@ export function AddSongModal({
         {/* Composer */}
         <div>
           <label className="text-sm font-medium text-foreground mb-1.5 block">
-            작곡가 *
+            작곡가
           </label>
           <input
             type="text"
             placeholder="예: F. Chopin"
             value={newSong.composer}
             onChange={(e) => onNewSongChange({ ...newSong, composer: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="w-full px-4 py-3 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            autoFocus
           />
         </div>
 
-        {/* Song Type */}
+        {/* Song Title */}
         <div>
           <label className="text-sm font-medium text-foreground mb-1.5 block">
-            곡 종류 *
+            곡 이름
           </label>
           <input
             type="text"
-            placeholder="예: Etude, Sonata, Ballade"
-            value={newSong.songType}
-            onChange={(e) => onNewSongChange({ ...newSong, songType: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-
-        {/* Opus & Number */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">
-              Opus
-            </label>
-            <input
-              type="text"
-              placeholder="예: Op.10"
-              value={newSong.opus}
-              onChange={(e) => onNewSongChange({ ...newSong, opus: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">
-              번호
-            </label>
-            <input
-              type="text"
-              placeholder="예: 4"
-              value={newSong.number}
-              onChange={(e) => onNewSongChange({ ...newSong, number: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-        </div>
-
-        {/* Duration */}
-        <div>
-          <label className="text-sm font-medium text-foreground mb-1.5 block">
-            연주 시간
-          </label>
-          <input
-            type="text"
-            placeholder="예: 5 min"
-            value={newSong.duration}
-            onChange={(e) => onNewSongChange({ ...newSong, duration: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder="예: Ballade Op.23 No.1"
+            value={newSong.title}
+            onChange={(e) => onNewSongChange({ ...newSong, title: e.target.value })}
+            className="w-full px-4 py-3 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
         {/* Preview */}
-        {(newSong.composer || newSong.songType) && (
+        {isValid && (
           <div className="bg-secondary/50 rounded-xl p-3">
             <p className="text-xs text-muted-foreground mb-1">미리보기</p>
             <p className="font-semibold text-foreground">
-              {newSong.composer} {newSong.songType}
-              {newSong.opus ? ` ${newSong.opus}` : ""}
-              {newSong.number ? ` No.${newSong.number}` : ""}
+              {newSong.composer} {newSong.title}
             </p>
           </div>
         )}
@@ -117,7 +80,7 @@ export function AddSongModal({
           </button>
           <button
             onClick={onAddSong}
-            disabled={!newSong.composer || !newSong.songType}
+            disabled={!isValid}
             className="flex-1 py-3 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             추가하기

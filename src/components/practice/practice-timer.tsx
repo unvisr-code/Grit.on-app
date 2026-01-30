@@ -1,49 +1,32 @@
 "use client";
 
-import { Clock, Sparkles, Volume2, MicOff } from "lucide-react";
+import { Clock, Sparkles, Play, Pause } from "lucide-react";
 import { formatTime } from "@/lib/format";
+
+interface RecordedAudio {
+  url: string;
+  duration: number;
+}
 
 interface PracticeTimerProps {
   practiceTime: number;
-  totalTime: number;
   isRecording: boolean;
   isPaused: boolean;
-  isSoundDetected: boolean;
-  isPianoDetected: boolean;
-  currentVolume: number;
   tip: string;
+  recordedAudio?: RecordedAudio | null;
+  isPlaying?: boolean;
+  onPlayRecording?: () => void;
 }
 
 export function PracticeTimer({
   practiceTime,
-  totalTime,
   isRecording,
   isPaused,
-  isSoundDetected,
-  isPianoDetected,
-  currentVolume,
   tip,
+  recordedAudio,
+  isPlaying,
+  onPlayRecording,
 }: PracticeTimerProps) {
-  const practiceRatio = totalTime > 0 ? Math.round((practiceTime / totalTime) * 100) : 0;
-
-  // Generate waveform bars based on volume
-  const generateWaveformBars = () => {
-    const bars = [];
-    const baseHeight = isPianoDetected ? 30 : 15;
-    const volumeMultiplier = currentVolume / 100;
-
-    for (let i = 0; i < 24; i++) {
-      const randomFactor = 0.5 + Math.random() * 0.5;
-      const height = isPaused
-        ? 15
-        : baseHeight + volumeMultiplier * 60 * randomFactor;
-      bars.push(height);
-    }
-    return bars;
-  };
-
-  const waveformHeights = isRecording ? generateWaveformBars() : [];
-
   return (
     <div className="bg-card rounded-2xl p-8 border border-border shadow-sm mb-6 relative overflow-hidden">
       <div className="text-center relative z-10">
@@ -51,49 +34,57 @@ export function PracticeTimer({
         <div className="text-6xl font-bold text-foreground font-mono mb-1 tracking-tighter">
           {formatTime(practiceTime)}
         </div>
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-2">
+        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-6">
           <Clock className="w-4 h-4" />
           <span>순연습시간</span>
           {isRecording && (
-            <span
-              className={`ml-2 flex items-center gap-1 ${
-                isPianoDetected ? "text-green-500" : isSoundDetected ? "text-yellow-500" : "text-muted-foreground"
-              }`}
-            >
-              {isPianoDetected ? (
-                <Volume2 className="w-3 h-3" />
-              ) : (
-                <MicOff className="w-3 h-3" />
-              )}
+            <span className="ml-2 flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full ${isPaused ? "bg-yellow-500" : "bg-red-500 animate-pulse"}`} />
+              <span className="text-xs">{isPaused ? "일시정지" : "녹음 중"}</span>
             </span>
           )}
         </div>
 
-        {/* Secondary Timer - Total Time */}
-        {isRecording && (
-          <div className="text-sm text-muted-foreground mb-6">
-            총 시간: {formatTime(totalTime)} ({practiceRatio}% 연습)
-          </div>
-        )}
-
         {/* Dynamic Content Area */}
-        <div className="h-24 flex items-center justify-center">
-          {isRecording ? (
-            <div className="flex items-end gap-1.5 h-16 w-full justify-center px-4">
-              {waveformHeights.map((height, i) => (
+        <div className="min-h-[80px] flex items-center justify-center">
+          {recordedAudio && !isRecording ? (
+            /* 녹음 재생 UI */
+            <button
+              onClick={onPlayRecording}
+              className="flex items-center gap-3 bg-primary/10 hover:bg-primary/20 rounded-xl px-6 py-4 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
+                {isPlaying ? (
+                  <Pause className="w-5 h-5 text-white" />
+                ) : (
+                  <Play className="w-5 h-5 text-white ml-0.5" />
+                )}
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-semibold text-foreground">
+                  {isPlaying ? "재생 중..." : "녹음 다시 듣기"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatTime(recordedAudio.duration)}
+                </p>
+              </div>
+            </button>
+          ) : isRecording ? (
+            /* 녹음 중 웨이브폼 */
+            <div className="flex items-end gap-1 h-12 w-full justify-center px-4">
+              {Array.from({ length: 20 }).map((_, i) => (
                 <div
                   key={i}
-                  className={`w-1.5 rounded-full transition-all duration-150 ${
-                    isPianoDetected ? "bg-green-500" : isSoundDetected ? "bg-yellow-500" : "bg-primary"
-                  }`}
+                  className={`w-1.5 rounded-full bg-primary transition-all duration-150`}
                   style={{
-                    height: `${height}%`,
-                    opacity: isPaused ? 0.3 : 0.6 + (height / 100) * 0.4,
+                    height: isPaused ? "15%" : `${20 + Math.random() * 60}%`,
+                    opacity: isPaused ? 0.3 : 0.6,
                   }}
                 />
               ))}
             </div>
           ) : (
+            /* 팁 표시 */
             <div className="bg-secondary rounded-xl p-4 w-full flex items-center gap-3 animate-fade-in">
               <div className="shrink-0 w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-yellow-600" />
