@@ -2,8 +2,8 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Music, Clock, Calendar, Sparkles, BookOpen, Lightbulb, Users, ChevronDown, ChevronUp, ChevronRight, User, Globe } from "lucide-react";
-import { mockSongs, getSongAIInfoByIdOrTitle } from "@/data";
-import { useState } from "react";
+import { mockSongs, getSongAIInfoByIdOrTitle, saveAnalyzedSong } from "@/data";
+import { useState, useEffect } from "react";
 
 export default function SongDetailPage() {
   const params = useParams();
@@ -30,6 +30,15 @@ export default function SongDetailPage() {
   }
 
   const aiInfo = getSongAIInfoByIdOrTitle(songId, titleFromQuery || song?.title || "", composerFromQuery || undefined);
+
+  // 분석한 곡 자동 저장
+  useEffect(() => {
+    saveAnalyzedSong(
+      aiInfo.composer,
+      aiInfo.title,
+      songId
+    );
+  }, [songId, aiInfo.composer, aiInfo.title]);
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);

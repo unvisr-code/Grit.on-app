@@ -1,28 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Search, Sparkles, Clock, Music, ChevronRight, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { mockSongs, mockSongAIInfo, composerList } from "@/data";
-
-// 최근 분석 히스토리 (mock)
-const recentAnalysis = [
-  { id: "1", title: "F. Chopin Ballade Op.23 No.1", date: "오늘" },
-  { id: "2", title: "L. v. Beethoven Sonata Op.13 No.8", date: "어제" },
-];
+import { mockSongs, mockSongAIInfo, composerList, getAnalyzedSongs, type AnalyzedSong } from "@/data";
 
 export default function AnalysisPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newSong, setNewSong] = useState({ composer: "", title: "" });
+  const [analyzedSongs, setAnalyzedSongs] = useState<AnalyzedSong[]>([]);
 
-  // 검색 필터링
+  // localStorage에서 분석 히스토리 불러오기
+  useEffect(() => {
+    setAnalyzedSongs(getAnalyzedSongs());
+  }, []);
+
+  // 검색 필터링 (기존 곡 + 분석한 곡)
   const filteredSongs = searchQuery.length >= 2
-    ? mockSongs.filter((song) =>
-        song.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? [
+        ...mockSongs.filter((song) =>
+          song.title.toLowerCase().includes(searchQuery.toLowerCase())
+        ).map((song) => ({
+          id: song.id,
+          title: song.title,
+          hasAIInfo: !!mockSongAIInfo[song.id],
+          isNew: false,
+          composer: "",
+        })),
+        ...analyzedSongs.filter((song) =>
+          song.fullTitle.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          !mockSongs.some((m) => m.id === song.id)
+        ).map((song) => ({
+          id: song.id,
+          title: song.fullTitle,
+          hasAIInfo: true,
+          isNew: true,
+          composer: song.composer,
+        })),
+      ]
     : [];
 
   // 작곡가 자동완성
@@ -82,32 +100,33 @@ export default function AnalysisPage() {
           </h3>
           {filteredSongs.length > 0 ? (
             <div className="bg-card rounded-xl border border-border overflow-hidden">
-              {filteredSongs.map((song, index) => {
-                const hasAIInfo = !!mockSongAIInfo[song.id];
-                return (
-                  <Link
-                    key={song.id}
-                    href={`/songs/${song.id}`}
-                    className={`flex items-center gap-3 p-4 hover:bg-secondary/30 transition-colors ${
-                      index !== filteredSongs.length - 1 ? "border-b border-border" : ""
-                    }`}
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Music className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground text-sm truncate">{song.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {hasAIInfo ? "AI 분석 정보 있음" : "기본 정보"}
-                      </p>
-                    </div>
-                    {hasAIInfo && (
-                      <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-                    )}
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                  </Link>
-                );
-              })}
+              {filteredSongs.map((song, index) => (
+                <Link
+                  key={song.id}
+                  href={
+                    song.isNew
+                      ? `/songs/${song.id}?composer=${encodeURIComponent(song.composer)}&title=${encodeURIComponent(song.title.replace(`${song.composer} `, ""))}`
+                      : `/songs/${song.id}`
+                  }
+                  className={`flex items-center gap-3 p-4 hover:bg-secondary/30 transition-colors ${
+                    index !== filteredSongs.length - 1 ? "border-b border-border" : ""
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Music className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground text-sm truncate">{song.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {song.hasAIInfo ? "AI 분석 정보 있음" : "기본 정보"}
+                    </p>
+                  </div>
+                  {song.hasAIInfo && (
+                    <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                  )}
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </Link>
+              ))}
             </div>
           ) : (
             <div className="bg-secondary/50 rounded-xl p-6 text-center">
@@ -117,35 +136,45 @@ export default function AnalysisPage() {
         </div>
       )}
 
-      {/* Recent Analysis History */}
+      {/* Recent Analysis History & Song List */}
       {searchQuery.length < 2 && (
         <>
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              최근 분석한 곡
-            </h3>
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
-              {recentAnalysis.map((item, index) => (
-                <Link
-                  key={item.id}
-                  href={`/songs/${item.id}`}
-                  className={`flex items-center gap-3 p-4 hover:bg-secondary/30 transition-colors ${
-                    index !== recentAnalysis.length - 1 ? "border-b border-border" : ""
-                  }`}
-                >
-                  <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground text-sm truncate">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">{item.date}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </Link>
-              ))}
+          {/* 최근 분석한 곡 (localStorage) */}
+          {analyzedSongs.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                최근 분석한 곡
+              </h3>
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                {analyzedSongs.slice(0, 5).map((item, index) => {
+                  const isMockSong = mockSongs.some((s) => s.id === item.id);
+                  return (
+                    <Link
+                      key={item.id}
+                      href={
+                        isMockSong
+                          ? `/songs/${item.id}`
+                          : `/songs/${item.id}?composer=${encodeURIComponent(item.composer)}&title=${encodeURIComponent(item.title)}`
+                      }
+                      className={`flex items-center gap-3 p-4 hover:bg-secondary/30 transition-colors ${
+                        index !== Math.min(analyzedSongs.length, 5) - 1 ? "border-b border-border" : ""
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <Sparkles className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground text-sm truncate">{item.fullTitle}</p>
+                        <p className="text-xs text-muted-foreground">{item.date}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* All Songs with AI Info */}
           <div>
